@@ -6,34 +6,45 @@
 
 ## Overview
 
-CHRONOS is an experimental framework for evaluating **distributed consensus (RAFT)** under **time-varying network conditions**. It combines:
+CHRONOS is an experimental framework for evaluating **distributed consensus (RAFT)** under **time-varying network conditions**.
 
-* A **RISC-V (Milk-V Duo S)** implementation of RAFT leader election
+Instead of focusing on implementing the consensus algorithm itself, this project investigates how **timing accuracy** and **network variability** affect consensus behavior.
+
+The framework combines:
+
+* A **RISC-V (Milk-V Duo S)** RAFT implementation
 * **Cycle-accurate timing** using the RISC-V `rdtime` CSR (assembly)
-* A **trace-driven impairment model** (delay/loss/jitter) to emulate wireless dynamics
-* A reproducible **baseline vs. impaired** experimental methodology
+* A **controlled impairment model** (delay, loss, variability)
+* A reproducible **baseline vs. dynamic experiment methodology**
 
-> Focus: Not re-implementing RAFT, but **measuring how timing and network variability affect consensus behavior**.
+> Goal: Understand how consensus behaves when network assumptions break.
 
 ---
 
 ## Key Ideas
 
-* **Time matters**: Election timeouts and heartbeats depend on precise timing.
-* **Controlled → Realistic**: Start with controlled impairments (delay/loss), then extend to **SDR-derived traces**.
-* **Reproducibility**: Same code, same settings → comparable runs.
-* **Metrics over features**: Election latency and stability are the primary outputs.
+* **Time is critical**
+  Consensus correctness depends on precise timeout behavior.
+
+* **Controlled → Realistic progression**
+  Start with controlled impairments → extend to SDR-based real traces.
+
+* **Measure, don’t assume**
+  Focus on observable behavior (latency, stability, retries).
+
+* **Reproducibility first**
+  Same inputs must produce comparable results.
 
 ---
 
 ## Features
 
 * RAFT roles: **Follower → Candidate → Leader**
-* Hardware-accurate timing via **`rdtime`**** (assembly)**
-* Atomic term update via **LR/SC**
-* Cross-compiled **static RISC-V binary**
-* Runs on **Milk-V Duo S** (RV32)
-* Experiment harness for **baseline vs. impaired** runs
+* Hardware-timed execution using **`rdtime`**
+* Atomic state updates via **LR/SC**
+* Runs on **Milk-V Duo S (RV32)**
+* Cross-compiled static binary
+* Experiment-ready logging and execution
 
 ---
 
@@ -42,67 +53,25 @@ CHRONOS is an experimental framework for evaluating **distributed consensus (RAF
 ```
 chronos-consensus/
 │
-├── core/                      # RAFT implementation (C + RISC-V ASM)
-│   ├── main.c                # Test harness (Milk-V execution)
-│   ├── raft.c                # RAFT state machine
-│   ├── raft.h                # Types and API
-│   ├── raft_core.S           # rdtime + atomic ops
-│   └── Makefile              # Cross-compilation
-│
-├── experiments/               # Experiment outputs
-│   ├── logs/
-│   │   ├── baseline.txt
-│   │   └── impaired.txt
-│   └── results/              # Parsed CSV / summaries
-│
-├── scripts/                   # Automation
-│   ├── run_baseline.sh
-│   ├── run_impaired.sh
-│   └── parse_results.py
-│
-├── figures/                   # Paper figures
-│   └── plots/
-│
-└── paper/                     # LaTeX draft
-    └── main.tex
+├── core/                # RAFT implementation
+├── experiments/         # Logs and results
+├── scripts/             # Run + analysis scripts
+├── figures/             # Paper figures
+└── paper/               # LaTeX draft
 ```
 
 ---
 
-## Requirements
-
-### Hardware
-
-* Milk-V Duo S (RV32)
-* Network access (SSH)
-
-### Toolchain (host)
-
-* `riscv64-linux-gnu-gcc`
-* `make`
-
-### Target (Milk-V)
-
-* Basic Linux userspace with `sh`, `chmod`, `scp/ssh`
-
----
-
 ## Build
-
-On your host machine:
 
 ```bash
 make clean
 make
 ```
 
-This produces a static binary: `raft_test`
-
 ---
 
-## Deploy & Run
-
-Copy to the board:
+## Run (Milk-V Duo)
 
 ```bash
 scp raft_test root@<milkv_ip>:/tmp/
@@ -111,165 +80,135 @@ chmod +x /tmp/raft_test
 /tmp/raft_test
 ```
 
-Example output:
-
-```
-Start: role=FOLLOWER term=0 votes=0
-...
-tick 10: role=LEADER term=1 votes=3
-Leader elected at tick 10
-```
-
 ---
 
-## Instrumentation (important)
+## Experiment Design
 
-To turn runs into **data**, record election latency:
+We evaluate RAFT under two controlled scenarios:
 
-In `main.c`:
+### 1. Baseline (Control)
 
-```c
-uint32_t election_start = 0;
-uint32_t election_end = 0;
+* No delay
+* No packet loss
+* Stable timing conditions
 
-/* when becoming candidate */
-election_start = now;
+### 2. Impaired (Dynamic)
 
-/* when becoming leader */
-election_end = now;
-printf("Election latency (ticks): %u\n", election_end - election_start);
-```
+* Introduced variability (delay / loss)
+* Simulated unreliable communication
+* Models wireless/network instability
 
----
-
-## Experiments
-
-### 1) Baseline (control)
-
-* No artificial delay or loss
-* Run multiple times (≥10)
-* Output → `experiments/logs/baseline.txt`
-
-```bash
-# scripts/run_baseline.sh
-for i in {1..10}; do
-  /tmp/raft_test >> ../experiments/logs/baseline.txt
-done
-```
-
----
-
-### 2) Impaired (controlled variability)
-
-Simulate unreliable communication inside the logic (first step):
-
-* Random vote drops / delays
-
-Example modification in `raft.c` (candidate phase):
-
-```c
-if (rand() % 100 < 70) {  // 30% loss
-    s->votes++;
-}
-```
-
-Run:
-
-```bash
-# scripts/run_impaired.sh
-for i in {1..10}; do
-  /tmp/raft_test >> ../experiments/logs/impaired.txt
-done
-```
-
-> Later, replace this with **trace-driven impairments** (from SDR).
+Each experiment is executed multiple times to ensure consistency.
 
 ---
 
 ## Metrics
 
-Primary:
+We evaluate consensus behavior using the following metrics:
 
-* **Election latency (ticks)**
-* **Number of re-elections / role changes**
+### Election Latency
 
-Secondary (later):
+Time required to transition from follower to leader
+→ Measures responsiveness
 
-* Commit latency
-* Availability (time with a stable leader)
+---
+
+### Election Success Rate
+
+Percentage of successful elections
+→ Measures reliability
+
+---
+
+### Election Rounds
+
+Number of retries before leader selection
+→ Measures instability
+
+---
+
+### Leader Stability Duration
+
+Time a leader remains active
+→ Measures system stability
+
+---
+
+### Timeout Trigger Rate
+
+Frequency of timeout events
+→ Measures sensitivity to delay
+
+---
+
+### Latency Variance
+
+Spread of election latency across runs
+→ Measures predictability
 
 ---
 
 ## Data Processing
 
-Parse logs into CSV:
+Experiment outputs are stored as raw logs in:
 
-```python
-# scripts/parse_results.py (sketch)
-import re, sys
-
-def parse(path):
-    vals = []
-    with open(path) as f:
-        for line in f:
-            m = re.search(r"Election latency.*: (\d+)", line)
-            if m:
-                vals.append(int(m.group(1)))
-    return vals
-
-base = parse("../experiments/logs/baseline.txt")
-imp  = parse("../experiments/logs/impaired.txt")
-
-print("baseline:", base)
-print("impaired:", imp)
+```
+experiments/logs/
 ```
 
-Compute mean/median and plot (matplotlib).
+Processing pipeline:
+
+1. Run baseline and impaired experiments
+2. Extract timing and state transitions
+3. Compute summary statistics
+4. Generate comparison plots
+
+Scripts for processing are located in:
+
+```
+scripts/
+```
+
+Example:
+
+```bash
+python3 scripts/parse_results.py
+```
 
 ---
 
-## Expected Results (Story)
+## Expected Results
 
-* **Baseline**: fast, consistent leader election
-* **Impaired**: increased latency, possible retries/instability
+* **Baseline:** fast and stable leader election
+* **Impaired:** increased latency and instability
 
-> Insight: **Consensus is sensitive to timing and network variability**. Controlled impairments reveal causal effects; SDR traces will validate realism.
+> Key insight:
+> Consensus protocols are highly sensitive to timing disruptions and unreliable communication.
 
 ---
 
 ## Roadmap
 
-* [x] Single-node timing-accurate RAFT on Milk-V
-* [x] Baseline vs. impaired (synthetic) experiments
-* [ ] Multi-process nodes (networked on localhost)
-* [ ] Trace-driven impairments (SDR → SNR → loss/delay)
-* [ ] Optional ns-3 integration for scale
-* [ ] Paper figures and full evaluation
+* [x] Hardware-timed RAFT (Milk-V)
+* [x] Baseline vs. impaired experiments
+* [ ] Multi-node communication
+* [ ] SDR-based trace integration
+* [ ] Scalable simulation (optional)
+* [ ] Full paper evaluation
 
 ---
 
-## Notes on Assembly
+## Limitations
 
-* `rdtime` provides **cycle-accurate timing** on RV32
-* `lr.w/sc.w` ensures **atomic term updates**
-* Unsigned arithmetic handles **timer wrap-around**
-
----
-
-## Limitations (current)
-
-* Votes are simulated locally (no real RPC yet)
+* Single-node simulation (votes are local)
+* No real network communication yet
 * No log replication (leader election only)
-* Synthetic impairments (SDR integration pending)
-
----
-
-## Citation (draft)
-
-> CHRONOS: Evaluating Consensus under Dynamic Wireless Conditions using Hardware-Timed RAFT and Trace-Driven Impairments.
 
 ---
 
 ## License
 
-TBD
+MIT License
+
+This project is open and free to use, modify, and distribute with attribution.
+
