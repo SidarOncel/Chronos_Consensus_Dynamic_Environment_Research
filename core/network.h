@@ -35,7 +35,6 @@ extern "C" {
  * You can change them later if you want a larger cluster or more callbacks.
  */
 #define COMM_MAX_PACKET_SIZE   2048
-#define COMM_RAFT_PORT         8000
 #define COMM_MIN_RSSI         (-85)
 
 /*

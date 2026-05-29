@@ -369,7 +369,7 @@ void raft_tick(void)
                 }
             }
 
-            if (votes > (g_cluster_size / 2U)) {
+            if (votes > (int)(g_cluster_size / 2U)) {
                 g_raft.commit_idx = n;
                 break;
             }

@@ -38,7 +38,8 @@ typedef enum {
     CHRONOS_ERR_NO_MEMORY   = -3,
     CHRONOS_ERR_NOT_FOUND   = -4,
     CHRONOS_ERR_COMM_FAIL   = -5,
-    CHRONOS_ERR_CONFLICT    = -6
+    CHRONOS_ERR_CONFLICT    = -6,
+    CHRONOS_ERR_NOT_LEADER  = -7
 } ChronosResult_t;
 
 /*********************************************************************
