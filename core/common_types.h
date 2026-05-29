@@ -277,15 +277,12 @@ typedef struct {
 } AppendEntriesResponse_t;
 
 typedef struct {
-
     uint32_t term;
-
     uint32_t index;
-
+    RaftEntryType_t type;
+    uint32_t data_len;
     uint8_t  committed;
-
     char data[128];
-
 } RaftLogEntry_t;
 
 
