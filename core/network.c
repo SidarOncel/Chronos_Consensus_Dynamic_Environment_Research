@@ -400,8 +400,15 @@ uint32_t comm_calculate_crc32(const void* data, size_t len)
     uint32_t crc = 0xFFFFFFFFu;
 
     for (size_t i = 0; i < len; i++) {
-        uint8_t index = (uint8_t)((crc ^ bytes[i]) & 0xFFu);
-        crc = (crc >> 8) ^ crc32_table[index];
+        crc ^= bytes[i];
+
+        for (int bit = 0; bit < 8; bit++) {
+            if (crc & 1u) {
+                crc = (crc >> 1) ^ 0xEDB88320u;
+            } else {
+                crc >>= 1;
+            }
+        }
     }
 
     return ~crc;
