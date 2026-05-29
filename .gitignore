@@ -1,0 +1,21 @@
+# Build outputs
+*.o
+*.out
+*.elf
+*.bin
+
+# Executables
+chronos_raft
+
+# Experiment logs
+experiments/logs/*.log
+
+# Python cache
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/
+
+# Temporary files
+*.tmp
