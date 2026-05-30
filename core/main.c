@@ -115,6 +115,16 @@ static const char *role_str(RaftState_t state)
     }
 }
 
+static const char* node_ip_from_id(uint8_t id)
+{
+    switch (id) {
+        case 1: return "192.168.120.138";
+        case 2: return "192.168.120.249";
+        case 3: return "192.168.120.12";
+        default: return "127.0.0.1";
+    }
+}
+
 /* -------------------------------------------------------------------------
  * RAFT message callbacks
  * -------------------------------------------------------------------------
@@ -127,7 +137,6 @@ static const char *role_str(RaftState_t state)
  *   - RAFT decides how to react
  *   - response is sent back if needed
  */
-
 static void on_vote_request(const MessageHeader_t *header,
                             const void *payload,
                             size_t payload_len)
@@ -365,8 +374,7 @@ static void register_demo_cluster(void)
          * For the paper branch, using localhost is fine for the first runs.
          * Later you can replace 127.0.0.1 with real board IPs.
          */
-        comm_register_peer(peer_id, "127.0.0.1", peer_port);
-
+        comm_register_peer(peer_id, node_ip_from_id(peer_id), peer_port);
         /*
          * RAFT also needs to know that this peer exists in the cluster.
          * That lets the consensus logic count the majority correctly.
@@ -490,9 +498,16 @@ int main(int argc, char **argv)
      * That makes it easy to run several processes on the same machine.
      */
     if (argc > 1) {
-        g_node_id = (uint8_t)atoi(argv[1]);
-        g_node_port = (uint16_t)(BASE_PORT + g_node_id);
-    }
+    g_node_id = (uint8_t)atoi(argv[1]);
+    g_node_port = (uint16_t)(BASE_PORT + g_node_id);
+}
+    snprintf(g_node_ip,
+            sizeof(g_node_ip),
+            "%s",
+            node_ip_from_id(g_node_id));
+
+
+    g_comm_port_override = g_node_port;
 
     /*
      * HAL is the first thing to initialize because everything else depends

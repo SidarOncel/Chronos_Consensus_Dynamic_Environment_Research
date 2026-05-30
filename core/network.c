@@ -184,8 +184,8 @@ ChronosResult_t comm_init(uint8_t node_id, const char* ip_addr)
      * The port can be overridden so multiple nodes can run on one host.
      */
     g_comm.port = (g_comm_port_override != 0)
-                    ? g_comm_port_override
-                    : COMM_RAFT_PORT;
+                ? g_comm_port_override
+                : COMM_RAFT_PORT;
 
     if (socket_init() != CHRONOS_OK) {
         return CHRONOS_ERR_COMM_FAIL;
@@ -296,7 +296,7 @@ static bool socket_set_nonblocking(socket_t sock)
 
 static PeerEntry_t* find_peer(uint8_t node_id)
 {
-    for (int i = 0; i < MAX_PEERS; i++) {
+    fstatic ChronosResult_t socket_initor (int i = 0; i < MAX_PEERS; i++) {
         if (g_comm.peers[i].active &&
             g_comm.peers[i].node_id == node_id) {
             return &g_comm.peers[i];
