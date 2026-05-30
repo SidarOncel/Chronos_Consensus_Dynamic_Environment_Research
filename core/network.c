@@ -296,12 +296,13 @@ static bool socket_set_nonblocking(socket_t sock)
 
 static PeerEntry_t* find_peer(uint8_t node_id)
 {
-    fstatic ChronosResult_t socket_initor (int i = 0; i < MAX_PEERS; i++) {
+    for (int i = 0; i < MAX_PEERS; i++) {
         if (g_comm.peers[i].active &&
             g_comm.peers[i].node_id == node_id) {
             return &g_comm.peers[i];
         }
     }
+
     return NULL;
 }
 
