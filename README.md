@@ -191,7 +191,7 @@ python3 scripts/parse_results.py
 
 * [x] Hardware-timed RAFT (Milk-V)
 * [x] Baseline vs. impaired experiments
-* [ ] Multi-node communication
+* [x] Multi-node communication
 * [ ] SDR-based trace integration
 * [ ] Scalable simulation (optional)
 * [ ] Full paper evaluation
